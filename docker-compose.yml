@@ -1,0 +1,64 @@
+# =====================================================
+# Docker Compose: Conda Development Environment
+# Miniconda + Mamba + JupyterLab
+# Actualizado: 30 de octubre de 2025
+# =====================================================
+
+services:
+  conda-jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: conda-jupyter
+    hostname: conda-dev
+    
+    ports:
+      - "8888:8888"  # JupyterLab
+    
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - GRANT_SUDO=yes
+      - CHOWN_HOME=yes
+    
+    volumes:
+      # Notebooks - User projects and notebooks (DATA - persisted in dockerVolumes)
+      # Each user has their own directory: notebooks/david, notebooks/giova, etc.
+      - d:/dockerVolumes/conda/notebooks:/workspace
+      
+      # Conda environments - Virtual environments (LOCAL - persisted, gitignored)
+      # Relative paths for portability
+      - ./envs:/opt/conda/envs
+      
+      # Conda packages cache - Downloaded packages cache (LOCAL - persisted, gitignored)
+      # Relative paths for portability
+      - ./pkgs:/opt/conda/pkgs
+      
+      # Conda configuration (INFRASTRUCTURE - versioned in Git)
+      - ./config/.condarc:/root/.condarc
+    
+    working_dir: /workspace
+    
+    # Reiniciar automaticamente si falla
+    restart: unless-stopped
+    
+    # Recursos (40% del host: 16 CPUs / 32GB RAM)
+    deploy:
+      resources:
+        limits:
+          cpus: '6'      # 40% de 16 CPUs = 6.4 ≈ 6
+          memory: 12G    # 40% de 32GB = 12.8GB ≈ 12GB
+        reservations:
+          cpus: '3'      # Mínimo garantizado
+          memory: 6G     # Mínimo garantizado
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/lab"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  default:
+    name: conda_network

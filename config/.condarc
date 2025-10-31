@@ -1,0 +1,37 @@
+# =====================================================
+# Configuracion de Conda
+# Optimizado para conda-forge y mamba
+# =====================================================
+
+# Canales en orden de prioridad
+channels:
+  - conda-forge
+  - defaults
+
+# Prioridad estricta de canales (evita conflictos)
+channel_priority: strict
+
+# Usar mamba como solver (mas rapido)
+experimental_solver: libmamba
+
+# Mostrar URLs de canales
+show_channel_urls: true
+
+# Configuracion de cache
+pkgs_dirs:
+  - /opt/conda/pkgs
+
+# Directorio de entornos
+envs_dirs:
+  - /opt/conda/envs
+
+# Siempre confirmar antes de instalar
+always_yes: false
+
+# No reportar uso anonimo
+report_errors: false
+
+# Configuracion de proxy (descomenta si necesitas)
+# proxy_servers:
+#   http: http://proxy.company.com:8080
+#   https: https://proxy.company.com:8080

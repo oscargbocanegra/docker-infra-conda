@@ -1,0 +1,511 @@
+# 📘 Complete Guide: Virtual Environments with Conda + Docker
+
+> **Last Updated:** October 30, 2025  
+> **Configuration:** Persistent environments with --copy flag to avoid Windows symlink issues
+
+---
+
+## 📋 Table of Contents
+
+1. [Fundamental Concepts](#fundamental-concepts)
+2. [Quick Commands](#quick-commands)
+3. [Step-by-Step Guide](#step-by-step-guide)
+4. [Docker Management](#docker-management)
+5. [Practical Examples](#practical-examples)
+6. [Troubleshooting](#troubleshooting)
+
+---
+
+## 🎯 Fundamental Concepts
+
+### What is a Virtual Environment?
+
+It's an **isolated directory** that contains:
+- ✅ A specific version of Python
+- ✅ Installed libraries and packages
+- ✅ Project dependencies
+
+**Benefits:**
+- Dependency isolation
+- No conflicts between projects
+- Easy replication
+
+### What is an IPyKernel?
+
+It's the **bridge** that connects your virtual environment with JupyterLab:
+
+```
+Virtual Environment (IA)   →   IPyKernel (ia)     →     JupyterLab
+    ↓                              ↓                        ↓
+[Python 3.11]              [Registered kernel]      [Select kernel]
+[pandas 2.3]       ←────→  [/opt/conda/envs/IA] ←────→  [Execute code]
+[numpy 2.3]                [Visible in Jupyter]      [In your notebook]
+```
+
+**Without the registered kernel, JupyterLab CANNOT see your environment.**
+
+### Available Tools
+
+| Tool | Speed | Recommended Use |
+|-------------|-----------|-----------------|
+| **Conda with --copy** | 🐢 Slow but reliable | **ALL packages** (avoids Windows symlink issues) |
+| **Mamba** | ⚡ Ultra fast | Only on Linux/Mac (has symlink issues on Windows) |
+| **Pip** | ⚡ Fast | Pure PyPI packages (transformers, etc.) |
+
+**⚠️ IMPORTANT:** On Windows with Docker volumes, always use `conda --copy` instead of `mamba`.
+
+---
+
+## 🚀 Quick Commands
+
+### Create Complete Environment (ALL-IN-ONE)
+
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda create -n MY_ENV python=3.11 --copy -y && \
+conda activate MY_ENV && \
+conda install numpy pandas matplotlib seaborn scikit-learn jupyter ipykernel --copy -y && \
+python -m ipykernel install --user --name MY_ENV --display-name 'Python (MY NAME)' && \
+jupyter kernelspec list
+"
+```
+
+**⚠️ Replace:**
+- `MY_ENV` → Technical environment name (e.g., `sentiment`, `ia`, `web`)
+- `MY NAME` → Display name in JupyterLab (e.g., `Sentiment Analysis`, `IA`, `Web`)
+
+**After:** Refresh JupyterLab (F5) to see the new kernel
+
+---
+
+### Query Environments and Kernels
+
+```bash
+# View installed environments
+docker exec -it conda-jupyter bash -c "source /opt/conda/etc/profile.d/conda.sh && conda env list"
+
+# View Jupyter kernels
+docker exec -it conda-jupyter bash -c "jupyter kernelspec list"
+
+# View packages in an environment
+docker exec -it conda-jupyter bash -c "source /opt/conda/etc/profile.d/conda.sh && conda activate MY_ENV && conda list"
+```
+
+---
+
+### Delete Environments and Kernels
+
+```bash
+# Delete kernel
+docker exec -it conda-jupyter bash -c "jupyter kernelspec uninstall MY_ENV -f"
+
+# Delete environment
+docker exec -it conda-jupyter bash -c "source /opt/conda/etc/profile.d/conda.sh && conda env remove -n MY_ENV -y"
+
+# Delete both (complete cleanup)
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+jupyter kernelspec uninstall MY_ENV -f && \
+conda env remove -n MY_ENV -y
+"
+```
+
+---
+
+## 📖 Step-by-Step Guide
+
+### 1️⃣ Create the Environment
+
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda create -n MY_ENV python=3.11 --copy -y
+"
+```
+
+**What it does:**
+- Creates a new isolated directory in `/opt/conda/envs/MY_ENV`
+- Installs Python 3.11
+- Uses `--copy` flag to physically copy files (avoids symlinks)
+
+**Time:** ~2-3 minutes (slower than mamba but reliable)
+
+---
+
+### 2️⃣ Activate the Environment
+
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda activate MY_ENV
+"
+```
+
+**What it does:**
+- Switches the active Python to your environment's version
+- Modifies PATH to use packages from this environment
+
+---
+
+### 3️⃣ Install Packages
+
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda activate MY_ENV && \
+conda install numpy pandas matplotlib jupyter ipykernel --copy -y
+"
+```
+
+**Available options:**
+- **Conda packages (with --copy):** Most scientific libraries
+- **Pip packages:** If not available in conda-forge
+
+**Example with pip:**
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda activate MY_ENV && \
+pip install transformers torch
+"
+```
+
+---
+
+### 4️⃣ Register the Kernel in JupyterLab
+
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda activate MY_ENV && \
+python -m ipykernel install --user --name MY_ENV --display-name 'Python (MY NAME)'
+"
+```
+
+**What it does:**
+- Creates a kernel spec in `/root/.local/share/jupyter/kernels/MY_ENV/`
+- Makes the environment visible in JupyterLab
+- Displays as "Python (MY NAME)" in the kernel selector
+
+---
+
+### 5️⃣ Verify Installation
+
+```bash
+docker exec -it conda-jupyter bash -c "jupyter kernelspec list"
+```
+
+**Expected output:**
+```
+Available kernels:
+  my_env     /root/.local/share/jupyter/kernels/my_env
+  python3    /opt/conda/share/jupyter/kernels/python3
+```
+
+---
+
+### 6️⃣ Use in JupyterLab
+
+1. Open JupyterLab: http://192.168.80.200:8888
+2. Create a new notebook
+3. Select kernel: **"Python (MY NAME)"**
+4. Start coding!
+
+**If you don't see the kernel:**
+- Refresh the page (F5)
+- Check that step 4 completed successfully
+- Run `jupyter kernelspec list` to verify
+
+---
+
+## 🐳 Docker Management
+
+### Basic Commands
+
+```powershell
+# Start container
+cd d:\dockerInfraProjects\conda
+docker-compose up -d
+
+# Stop container
+docker-compose down
+
+# Restart container
+docker-compose restart
+
+# View logs
+docker logs conda-jupyter --tail 50 --follow
+
+# Access interactive shell
+docker exec -it conda-jupyter bash
+```
+
+---
+
+### Check Container Status
+
+```powershell
+# Check if running
+docker ps --filter name=conda-jupyter
+
+# Check all (including stopped)
+docker ps -a --filter name=conda-jupyter
+
+# View resource usage
+docker stats conda-jupyter --no-stream
+```
+
+---
+
+### Rebuild Image (Advanced)
+
+```powershell
+cd d:\dockerInfraProjects\conda
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+**⚠️ Note:** Environments in `./envs/` persist, but kernels in `/root/.local/` will be lost.
+
+---
+
+## 💡 Practical Examples
+
+### Example 1: Machine Learning Environment
+
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda create -n IA python=3.11 --copy -y && \
+conda activate IA && \
+conda install numpy pandas matplotlib seaborn scikit-learn scipy statsmodels jupyter ipykernel --copy -y && \
+python -m ipykernel install --user --name IA --display-name 'Python (IA)' && \
+jupyter kernelspec list
+"
+```
+
+**Packages included:**
+- `numpy` → Numerical arrays
+- `pandas` → DataFrames
+- `matplotlib` + `seaborn` → Visualizations
+- `scikit-learn` → Machine learning algorithms
+- `scipy` → Scientific computing
+- `statsmodels` → Statistical models
+
+**Use case:** Data analysis, regression models, classification, clustering
+
+---
+
+### Example 2: Deep Learning / LLM Environment
+
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda create -n LLM python=3.11 --copy -y && \
+conda activate LLM && \
+conda install numpy pandas matplotlib jupyter ipykernel --copy -y && \
+pip install transformers && \
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+python -m ipykernel install --user --name LLM --display-name 'Python (LLM)' && \
+jupyter kernelspec list
+"
+```
+
+**Packages included:**
+- `transformers` → Hugging Face models (BERT, GPT, etc.)
+- `torch` → PyTorch (CPU version)
+- `torchvision` + `torchaudio` → Vision and audio utilities
+
+**Use case:** Natural Language Processing, sentiment analysis, text generation, fine-tuning LLMs
+
+---
+
+### Example 3: Web Scraping Environment
+
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda create -n WEB python=3.11 --copy -y && \
+conda activate WEB && \
+conda install jupyter ipykernel --copy -y && \
+pip install requests beautifulsoup4 selenium pandas && \
+python -m ipykernel install --user --name WEB --display-name 'Python (Web Scraping)' && \
+jupyter kernelspec list
+"
+```
+
+**Packages included:**
+- `requests` → HTTP requests
+- `beautifulsoup4` → HTML parsing
+- `selenium` → Browser automation
+- `pandas` → Data storage
+
+**Use case:** Web scraping, data extraction, automated browsing
+
+---
+
+## 🚨 Troubleshooting
+
+### Problem: Symlink error when creating environment
+
+**Error message:**
+```
+critical libmamba filesystem error: cannot copy symlink: Invalid argument
+```
+
+**Cause:** Windows filesystem (DRVFS) in Docker doesn't support symlinks
+
+**Solution:** Always use `conda --copy` flag:
+```bash
+conda create -n ENV --copy -y
+conda install PACKAGES --copy -y
+```
+
+---
+
+### Problem: Kernel doesn't appear in JupyterLab
+
+**Possible causes:**
+
+1. **Kernel not registered**
+   ```bash
+   # Register it
+   docker exec -it conda-jupyter bash -c "
+   source /opt/conda/etc/profile.d/conda.sh && \
+   conda activate MY_ENV && \
+   python -m ipykernel install --user --name MY_ENV --display-name 'Python (MY NAME)'
+   "
+   ```
+
+2. **JupyterLab cache**
+   - Refresh page (F5)
+   - Clear browser cache (Ctrl+Shift+Del)
+
+3. **Verify kernel exists**
+   ```bash
+   docker exec -it conda-jupyter bash -c "jupyter kernelspec list"
+   ```
+
+---
+
+### Problem: Environment creation is very slow
+
+**Cause:** Using `conda --copy` physically copies all files (slower than symlinks)
+
+**Solutions:**
+
+1. **Accept the wait** (~3-5 minutes is normal)
+2. **Reduce packages** (install only what you need)
+3. **Use package cache** (second installs are faster)
+
+**Why not use mamba?**
+- Mamba is 10x faster BUT creates symlinks
+- Symlinks fail on Windows Docker volumes
+- `conda --copy` is slower but reliable
+
+---
+
+### Problem: "No space left on device"
+
+**Causes:**
+- Package cache full (`/opt/conda/pkgs/`)
+- Disk D:\ full
+
+**Solutions:**
+
+```bash
+# Clean package cache
+docker exec -it conda-jupyter bash -c "conda clean --all -y"
+
+# Check disk space on host
+Get-PSDrive D
+```
+
+---
+
+### Problem: Environment disappeared after restart
+
+**This should NOT happen** with current configuration (persistent volumes).
+
+**Verify:**
+```bash
+docker exec -it conda-jupyter bash -c "conda env list"
+```
+
+**If missing:**
+1. Check volume mounts in `docker-compose.yml`
+2. Verify `./envs/` folder exists on host
+3. Recreate environment using documented commands
+
+---
+
+## 📊 Environment Comparison
+
+| Environment | Python | Time to Create | Main Packages | Use Case |
+|-------------|--------|----------------|---------------|----------|
+| **IA** | 3.11 | ~5 min | numpy, pandas, scikit-learn | Machine Learning |
+| **LLM** | 3.11 | ~6 min | transformers, torch | NLP, LLMs |
+| **WEB** | 3.11 | ~2 min | requests, beautifulsoup4 | Web Scraping |
+| **BASE** | 3.11 | ~1 min | Just Python + Jupyter | Minimal setup |
+
+---
+
+## 🎯 Best Practices
+
+### ✅ DO:
+- Always use `--copy` flag on Windows
+- Document your environments (save package lists)
+- Use descriptive kernel names
+- Refresh JupyterLab after creating kernels
+- Keep notebooks in `/workspace` (persistent)
+
+### ❌ DON'T:
+- Use `mamba` on Windows volumes (symlink issues)
+- Create environments without registering kernels
+- Store important data inside containers (use volumes)
+- Delete environments without checking dependencies
+
+---
+
+## 🔄 Backup and Restore
+
+### Export Environment
+
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda activate MY_ENV && \
+conda env export > /workspace/MY_ENV_backup.yml
+"
+```
+
+**File saved to:** `d:/dockerVolumes/conda/notebooks/MY_ENV_backup.yml`
+
+---
+
+### Restore Environment
+
+```bash
+docker exec -it conda-jupyter bash -c "
+source /opt/conda/etc/profile.d/conda.sh && \
+conda env create -f /workspace/MY_ENV_backup.yml --copy && \
+conda activate MY_ENV && \
+python -m ipykernel install --user --name MY_ENV --display-name 'Python (MY NAME)'
+"
+```
+
+---
+
+## 📚 Additional Resources
+
+- **Conda Cheat Sheet:** https://docs.conda.io/projects/conda/en/latest/user-guide/cheatsheet.html
+- **Jupyter Kernels:** https://jupyter-client.readthedocs.io/en/stable/kernels.html
+- **Docker Compose:** https://docs.docker.com/compose/
+- **Conda-Forge:** https://conda-forge.org/
+
+---
+
+**Created with ❤️ for efficient data science workflows**  
+**Last updated:** October 30, 2025
