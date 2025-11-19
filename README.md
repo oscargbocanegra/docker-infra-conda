@@ -52,10 +52,11 @@ d:/dockerInfraProjects/conda/
 
 ```
 d:/dockerVolumes/conda/
-└── 📁 notebooks/             # ✅ Persistent notebooks
-    ├── david/
-    ├── giova/
-    └── [other users]
+├── 📁 notebooks/             # ✅ Persistent notebooks
+│   ├── david/
+│   ├── giova/
+│   └── [other users]
+└── 📁 hf_cache/              # ✅ HuggingFace models cache
 
 d:/dockerInfraProjects/conda/
 ├── 📁 envs/                  # ✅ Persistent environments (not versioned)
@@ -130,6 +131,13 @@ d:/dockerInfraProjects/conda/
 │  │  - All users' notebooks                             │   │
 │  │  - Data and results                                 │   │
 │  └─────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  HuggingFace Cache (✅ Persistent)                  │   │
+│  │  /root/.cache/huggingface → d:/dockerVolumes/hf_cache/ │
+│  │  - Transformers models                              │   │
+│  │  - Tokenizers                                       │   │
+│  └─────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -201,6 +209,20 @@ docker exec -it conda-jupyter bash -c "conda env list"
 # View kernels
 docker exec -it conda-jupyter bash -c "jupyter kernelspec list"
 ```
+
+### Register Kernel for Existing Environment
+
+If you have environments that don't appear in JupyterLab:
+
+```bash
+# Register kernel for existing environment
+docker exec -it conda-jupyter bash -c "/opt/conda/envs/ENV_NAME/bin/python -m pip install ipykernel && /opt/conda/envs/ENV_NAME/bin/python -m ipykernel install --user --name ENV_NAME --display-name 'Python (DISPLAY_NAME)'"
+
+# Verify registration
+docker exec -it conda-jupyter bash -c "jupyter kernelspec list"
+```
+
+**Then refresh JupyterLab (F5) to see the new kernel.**
 
 ---
 
@@ -326,6 +348,12 @@ conda install PACKAGES --copy -y
 ---
 
 ## 📝 Recent Changes
+
+### November 19, 2025
+
+- ✅ Added HuggingFace cache volume (`d:/dockerVolumes/hf_cache` → `/root/.cache/huggingface`)
+- ✅ Documented how to register kernels for existing environments
+- ✅ Improved troubleshooting section for kernel visibility issues
 
 ### October 30, 2025
 

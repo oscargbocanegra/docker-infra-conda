@@ -269,6 +269,11 @@ docker-compose up -d
 
 **⚠️ Note:** Environments in `./envs/` persist, but kernels in `/root/.local/` will be lost.
 
+**To re-register kernels after rebuild:**
+```bash
+docker exec -it conda-jupyter bash -c "/opt/conda/envs/ENV_NAME/bin/python -m pip install ipykernel && /opt/conda/envs/ENV_NAME/bin/python -m ipykernel install --user --name ENV_NAME --display-name 'Python (DISPLAY_NAME)'"
+```
+
 ---
 
 ## 💡 Practical Examples
@@ -320,6 +325,8 @@ jupyter kernelspec list
 
 **Use case:** Natural Language Processing, sentiment analysis, text generation, fine-tuning LLMs
 
+**Note:** Models downloaded with `transformers` are cached in `d:/dockerVolumes/hf_cache` and persist across container restarts.
+
 ---
 
 ### Example 3: Web Scraping Environment
@@ -365,18 +372,16 @@ conda install PACKAGES --copy -y
 
 ---
 
-### Problem: Kernel doesn't appear in JupyterLab
+### Problem: Environment exists but kernel doesn't appear in JupyterLab
+
+**Symptom:** You can see the environment with `conda env list` but not in JupyterLab's kernel selector.
 
 **Possible causes:**
 
-1. **Kernel not registered**
+1. **Kernel not registered** (most common after container rebuild)
    ```bash
-   # Register it
-   docker exec -it conda-jupyter bash -c "
-   source /opt/conda/etc/profile.d/conda.sh && \
-   conda activate MY_ENV && \
-   python -m ipykernel install --user --name MY_ENV --display-name 'Python (MY NAME)'
-   "
+   # Register kernel using environment's Python directly
+   docker exec -it conda-jupyter bash -c "/opt/conda/envs/MY_ENV/bin/python -m pip install ipykernel && /opt/conda/envs/MY_ENV/bin/python -m ipykernel install --user --name MY_ENV --display-name 'Python (MY NAME)'"
    ```
 
 2. **JupyterLab cache**
@@ -387,6 +392,15 @@ conda install PACKAGES --copy -y
    ```bash
    docker exec -it conda-jupyter bash -c "jupyter kernelspec list"
    ```
+
+**Example for IA and LLM environments:**
+```bash
+# Register IA kernel
+docker exec -it conda-jupyter bash -c "/opt/conda/envs/IA/bin/python -m pip install ipykernel && /opt/conda/envs/IA/bin/python -m ipykernel install --user --name IA --display-name 'Python (IA)'"
+
+# Register LLM kernel
+docker exec -it conda-jupyter bash -c "/opt/conda/envs/LLM/bin/python -m pip install ipykernel && /opt/conda/envs/LLM/bin/python -m ipykernel install --user --name LLM --display-name 'Python (LLM)'"
+```
 
 ---
 
@@ -438,6 +452,22 @@ docker exec -it conda-jupyter bash -c "conda env list"
 1. Check volume mounts in `docker-compose.yml`
 2. Verify `./envs/` folder exists on host
 3. Recreate environment using documented commands
+
+---
+
+### Problem: HuggingFace models re-downloading every time
+
+**Symptom:** Transformers models download on every container restart.
+
+**Cause:** HuggingFace cache not persisted.
+
+**Solution:** Ensure HuggingFace cache volume is mounted in `docker-compose.yml`:
+```yaml
+volumes:
+  - d:/dockerVolumes/hf_cache:/root/.cache/huggingface
+```
+
+This volume is already configured in the current setup. Models are cached in `d:/dockerVolumes/hf_cache` and persist across container restarts.
 
 ---
 

@@ -33,6 +33,10 @@ services:
       # Conda packages cache - Downloaded packages cache (LOCAL - persisted, gitignored)
       # Relative paths for portability
       - ./pkgs:/opt/conda/pkgs
+
+      # HuggingFace models cache - Transformers models (DATA - persisted in dockerVolumes)
+      - d:/dockerVolumes/hf_cache:/root/.cache/huggingface
+
       
       # Conda configuration (INFRASTRUCTURE - versioned in Git)
       - ./config/.condarc:/root/.condarc
@@ -63,3 +67,4 @@ services:
 networks:
   default:
     name: conda_network
+
