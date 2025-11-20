@@ -1,18 +1,19 @@
-# 📘 Complete Guide: Virtual Environments with Conda + Docker
+# 📘 Complete Guide: Virtual Environments with Conda + Docker + GPU
 
-> **Last Updated:** October 30, 2025  
-> **Configuration:** Persistent environments with --copy flag to avoid Windows symlink issues
+> **Last Updated:** November 20, 2025  
+> **Configuration:** Persistent environments + GPU Support (NVIDIA RTX 2080 Ti)
 
 ---
 
 ## 📋 Table of Contents
 
 1. [Fundamental Concepts](#fundamental-concepts)
-2. [Quick Commands](#quick-commands)
-3. [Step-by-Step Guide](#step-by-step-guide)
-4. [Docker Management](#docker-management)
-5. [Practical Examples](#practical-examples)
-6. [Troubleshooting](#troubleshooting)
+2. [GPU Configuration](#gpu-configuration)
+3. [Quick Commands](#quick-commands)
+4. [Step-by-Step Guide](#step-by-step-guide)
+5. [Docker Management](#docker-management)
+6. [Practical Examples](#practical-examples)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -53,6 +54,57 @@ Virtual Environment (IA)   →   IPyKernel (ia)     →     JupyterLab
 | **Pip** | ⚡ Fast | Pure PyPI packages (transformers, etc.) |
 
 **⚠️ IMPORTANT:** On Windows with Docker volumes, always use `conda --copy` instead of `mamba`.
+
+### GPU Support
+
+This environment includes **NVIDIA GPU acceleration**:
+
+- **GPU:** NVIDIA GeForce RTX 2080 Ti (11GB VRAM)
+- **CUDA:** 13.0
+- **PyTorch:** 2.5.1+cu121 (pre-installed in base environment)
+- **Driver:** 581.80 (Windows)
+
+All environments (base, IA, LLM) have access to GPU for accelerated computing.
+
+---
+
+## 🎮 GPU Configuration
+
+### Verify GPU Access
+
+```bash
+# Quick GPU check
+docker exec -it conda-jupyter nvidia-smi
+
+# PyTorch CUDA test
+docker exec -it conda-jupyter python -c "import torch; print('CUDA available:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
+```
+
+### Expected Output
+
+```
+CUDA available: True
+GPU: NVIDIA GeForce RTX 2080 Ti
+```
+
+### GPU in Notebooks
+
+Use GPU in your Jupyter notebooks:
+
+```python
+import torch
+
+# Check GPU availability
+print(f"CUDA available: {torch.cuda.is_available()}")
+print(f"GPU name: {torch.cuda.get_device_name(0)}")
+
+# Move tensors to GPU
+x = torch.randn(1000, 1000).cuda()
+y = torch.randn(1000, 1000).cuda()
+z = torch.matmul(x, y)  # Computed on GPU
+```
+
+See **[TEST_GPU.md](TEST_GPU.md)** for comprehensive testing examples.
 
 ---
 
@@ -303,7 +355,7 @@ jupyter kernelspec list
 
 ---
 
-### Example 2: Deep Learning / LLM Environment
+### Example 2: Deep Learning / LLM Environment with GPU
 
 ```bash
 docker exec -it conda-jupyter bash -c "
@@ -311,8 +363,7 @@ source /opt/conda/etc/profile.d/conda.sh && \
 conda create -n LLM python=3.11 --copy -y && \
 conda activate LLM && \
 conda install numpy pandas matplotlib jupyter ipykernel --copy -y && \
-pip install transformers && \
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+pip install transformers torch torchvision --index-url https://download.pytorch.org/whl/cu121 && \
 python -m ipykernel install --user --name LLM --display-name 'Python (LLM)' && \
 jupyter kernelspec list
 "
@@ -320,10 +371,16 @@ jupyter kernelspec list
 
 **Packages included:**
 - `transformers` → Hugging Face models (BERT, GPT, etc.)
-- `torch` → PyTorch (CPU version)
-- `torchvision` + `torchaudio` → Vision and audio utilities
+- `torch` → PyTorch with CUDA 12.1 support (GPU-accelerated)
+- `torchvision` → Vision utilities with GPU support
 
 **Use case:** Natural Language Processing, sentiment analysis, text generation, fine-tuning LLMs
+
+**GPU Benefits:**
+- ✅ 10-50x faster inference
+- ✅ Larger batch sizes
+- ✅ Fine-tuning large models
+- ✅ Real-time processing
 
 **Note:** Models downloaded with `transformers` are cached in `d:/dockerVolumes/hf_cache` and persist across container restarts.
 
@@ -473,12 +530,12 @@ This volume is already configured in the current setup. Models are cached in `d:
 
 ## 📊 Environment Comparison
 
-| Environment | Python | Time to Create | Main Packages | Use Case |
-|-------------|--------|----------------|---------------|----------|
-| **IA** | 3.11 | ~5 min | numpy, pandas, scikit-learn | Machine Learning |
-| **LLM** | 3.11 | ~6 min | transformers, torch | NLP, LLMs |
-| **WEB** | 3.11 | ~2 min | requests, beautifulsoup4 | Web Scraping |
-| **BASE** | 3.11 | ~1 min | Just Python + Jupyter | Minimal setup |
+| Environment | Python | GPU | Time to Create | Main Packages | Use Case |
+|-------------|--------|-----|----------------|---------------|----------|
+| **base** | 3.11 | ✅ | Included | PyTorch+CUDA | General purpose with GPU |
+| **IA** | 3.11 | ✅ | ~5 min | numpy, pandas, scikit-learn | Machine Learning |
+| **LLM** | 3.11 | ✅ | ~6 min | transformers, torch+CUDA | NLP, LLMs with GPU |
+| **WEB** | 3.11 | ✅ | ~2 min | requests, beautifulsoup4 | Web Scraping |
 
 ---
 
@@ -490,12 +547,15 @@ This volume is already configured in the current setup. Models are cached in `d:
 - Use descriptive kernel names
 - Refresh JupyterLab after creating kernels
 - Keep notebooks in `/workspace` (persistent)
+- Test GPU availability after creating new environments
+- Use `torch.cuda.empty_cache()` to free GPU memory between runs
 
 ### ❌ DON'T:
 - Use `mamba` on Windows volumes (symlink issues)
 - Create environments without registering kernels
 - Store important data inside containers (use volumes)
 - Delete environments without checking dependencies
+- Forget to re-register kernels after container rebuild
 
 ---
 
@@ -530,10 +590,18 @@ python -m ipykernel install --user --name MY_ENV --display-name 'Python (MY NAME
 
 ## 📚 Additional Resources
 
+- **GPU Testing Guide:** [TEST_GPU.md](TEST_GPU.md) - Comprehensive GPU verification
 - **Conda Cheat Sheet:** https://docs.conda.io/projects/conda/en/latest/user-guide/cheatsheet.html
 - **Jupyter Kernels:** https://jupyter-client.readthedocs.io/en/stable/kernels.html
+- **PyTorch Documentation:** https://pytorch.org/docs/
+- **CUDA Toolkit:** https://developer.nvidia.com/cuda-toolkit
 - **Docker Compose:** https://docs.docker.com/compose/
 - **Conda-Forge:** https://conda-forge.org/
+
+---
+
+**Last updated:** November 20, 2025  
+**Version:** 3.0.0 (GPU Support)
 
 ---
 
