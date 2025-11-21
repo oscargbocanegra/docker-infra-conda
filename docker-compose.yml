@@ -1,7 +1,7 @@
 # =====================================================
 # Docker Compose: Conda Development Environment
 # Miniconda + Mamba + JupyterLab + GPU NVIDIA
-# Actualizado: 20 de noviembre de 2025
+# Actualizado: 21 de noviembre de 2025
 # =====================================================
 
 services:
@@ -13,8 +13,8 @@ services:
     hostname: conda-dev
     
     ports:
-      - "8888:8888"  # JupyterLab
-      - "7860:7860"  # Gradio UI
+      - "192.168.80.200:8888:8888"  # JupyterLab
+      - "192.168.80.200:7860:7860"  # Gradio UI
     
     environment:
       - JUPYTER_ENABLE_LAB=yes
@@ -22,23 +22,35 @@ services:
       - CHOWN_HOME=yes
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      
+      # HuggingFace configuration
+      - HF_HOME=/root/.cache/huggingface
+      - HF_DATASETS_CACHE=/root/.cache/huggingface/datasets
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface/transformers
+      - HUGGINGFACE_HUB_CACHE=/root/.cache/huggingface/hub
+      
+      # API Keys (from .env file)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://192.168.80.200:11434}
+    
+    env_file:
+      - .env
     
     volumes:
       # Notebooks - User projects and notebooks (DATA - persisted in dockerVolumes)
-      # Each user has their own directory: notebooks/david, notebooks/giova, etc.
-      - d:/dockerVolumes/conda/notebooks:/workspace
+      - D:/dockerVolumes/conda/notebooks:/workspace
       
       # Conda environments - Virtual environments (LOCAL - persisted, gitignored)
-      # Relative paths for portability
       - ./envs:/opt/conda/envs
       
       # Conda packages cache - Downloaded packages cache (LOCAL - persisted, gitignored)
-      # Relative paths for portability
       - ./pkgs:/opt/conda/pkgs
 
       # HuggingFace models cache - Transformers models (DATA - persisted in dockerVolumes)
-      - d:/dockerVolumes/hf_cache:/root/.cache/huggingface
-
+      - D:/dockerVolumes/hf_cache:/root/.cache/huggingface
       
       # Conda configuration (INFRASTRUCTURE - versioned in Git)
       - ./config/.condarc:/root/.condarc

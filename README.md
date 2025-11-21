@@ -36,9 +36,7 @@ docker-compose down
 
 ```
 d:/dockerInfraProjects/conda/
-├── 📄 docker-compose.yml         # Active configuration (with GPU)
-├── 📄 docker-compose-gpu.yml     # GPU-enabled configuration
-├── 📄 docker-compose-backup.yml  # Backup (pre-GPU config)
+├── 📄 docker-compose.yml         # Production configuration (GPU-enabled)
 ├── 📄 Dockerfile                 # Base image
 ├── 📄 README.md                  # This file
 ├── 📘 COMPLETE_GUIDE.md          # Detailed usage guide (English)
@@ -49,9 +47,10 @@ d:/dockerInfraProjects/conda/
 ├── 📁 envs/                      # ✅ Persistent environments (gitignored)
 ├── 📁 pkgs/                      # ✅ Persistent package cache (gitignored)
 └── 📁 scripts/                   # Management scripts
-
-d:/dockerInfraProjects/
-└── 📄 setup-gpu-wsl2.ps1         # GPU setup automation script
+    ├── start-jupyter.ps1         # Start JupyterLab
+    ├── stop-jupyter.ps1          # Stop container
+    ├── user-guide.ps1            # User guide
+    └── setup-gpu-wsl2.ps1        # GPU setup automation
 ```
 
 ### Persistent Data (External to Git)
@@ -165,6 +164,47 @@ d:/dockerInfraProjects/conda/
 
 ---
 
+## 🔧 Environment Variables
+
+El contenedor tiene configuradas las siguientes variables de entorno para facilitar el uso de HuggingFace y cache de modelos:
+
+| Variable | Valor | Descripción |
+|----------|-------|-------------|
+| `HF_HOME` | `/root/.cache/huggingface` | Directorio base para caché de HuggingFace |
+| `HF_DATASETS_CACHE` | `/root/.cache/huggingface/datasets` | Caché de datasets |
+| `TRANSFORMERS_CACHE` | `/root/.cache/huggingface/transformers` | Caché de modelos Transformers |
+| `HUGGINGFACE_HUB_CACHE` | `/root/.cache/huggingface/hub` | Caché del HuggingFace Hub |
+
+### Uso en Notebooks
+
+**❌ Evitar rutas hardcodeadas:**
+```python
+# MAL - Ruta específica de Windows
+cache_dir = r"D:\dockerVolumes\hf_cache"
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, cache_dir=cache_dir)
+```
+
+**✅ Usar variables de entorno:**
+```python
+# BIEN - Portable entre entornos
+import os
+cache_dir = os.getenv('HF_HOME', '/root/.cache/huggingface')
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, cache_dir=cache_dir)
+```
+
+**✅ Aún mejor - Omitir cache_dir (usa variable automáticamente):**
+```python
+# MEJOR - HuggingFace usa HF_HOME automáticamente
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
+```
+
+**Ventajas:**
+- ✅ Portabilidad: El código funciona en Docker, Colab, local
+- ✅ Consistencia: Todos los usuarios usan la misma configuración
+- ✅ Mantenibilidad: Cambios centralizados en docker-compose.yml
+
+---
+
 ## 📚 Guides and Documentation
 
 ### For Users
@@ -185,10 +225,9 @@ d:/dockerInfraProjects/conda/
 ### For Administrators
 
 - **[.gitignore](.gitignore)** - Versioning strategy
-- **[docker-compose.yml](docker-compose.yml)** - Active configuration (GPU-enabled)
-- **[docker-compose-gpu.yml](docker-compose-gpu.yml)** - GPU configuration template
+- **[docker-compose.yml](docker-compose.yml)** - Production configuration (GPU-enabled)
 - **[Dockerfile](Dockerfile)** - Image definition
-- **[setup-gpu-wsl2.ps1](../setup-gpu-wsl2.ps1)** - GPU setup automation script
+- **[scripts/](scripts/)** - Management and setup scripts
 
 ---
 
@@ -337,8 +376,8 @@ docker exec -it conda-jupyter python -c "import torch; print('CUDA available:', 
 If you need to reconfigure GPU or set up on a new machine:
 
 ```powershell
-cd d:\dockerInfraProjects
-.\setup-gpu-wsl2.ps1
+cd d:\dockerInfraProjects\conda
+.\scripts\setup-gpu-wsl2.ps1
 ```
 
 See **[TEST_GPU.md](TEST_GPU.md)** for detailed GPU testing examples.
@@ -477,7 +516,7 @@ This commonly happens after:
 4. **Run full GPU setup:**
    ```powershell
    cd d:\dockerInfraProjects
-   .\setup-gpu-wsl2.ps1
+   .\scripts\setup-gpu-wsl2.ps1
    ```
 
 ---
@@ -492,7 +531,7 @@ This commonly happens after:
 - ✅ HuggingFace cache volume added
 - ✅ Automatic kernel registration documented
 - ✅ GPU testing guide created (TEST_GPU.md)
-- ✅ Setup automation script (setup-gpu-wsl2.ps1)
+- ✅ Setup automation script (scripts/setup-gpu-wsl2.ps1)
 
 ### November 19, 2025
 
